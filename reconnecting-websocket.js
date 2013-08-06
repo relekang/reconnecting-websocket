@@ -20,6 +20,8 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 // THE SOFTWARE.
 
+/*global WebSocket */
+
 /**
  * This behaves like a WebSocket in every way, except if it fails to connect,
  * or it gets disconnected, it will repeatedly poll until it succesfully connects
@@ -48,57 +50,54 @@
  * - Joe Walnes
  */
 function ReconnectingWebSocket(url, protocols) {
+    'use strict';
+
     protocols = protocols || [];
+
+    var self = this,
+        ws,
+        forcedClose = false,
+        timedOut = false;
 
     // These can be altered by calling code.
     this.debug = false;
     this.reconnectInterval = 1000;
     this.timeoutInterval = 2000;
 
-    var self = this;
-    var ws;
-    var forcedClose = false;
-    var timedOut = false;
-    
     this.url = url;
     this.protocols = protocols;
     this.readyState = WebSocket.CONNECTING;
     this.URL = url; // Public API
 
-    this.onopen = function(event) {
-    };
+    this.onopen = function (event) { };
 
-    this.onclose = function(event) {
-    };
+    this.onclose = function (event) { };
 
-    this.onconnecting = function(event) {
-    };
+    this.onconnecting = function (event) { };
 
-    this.onmessage = function(event) {
-    };
+    this.onmessage = function (event) { };
 
-    this.onerror = function(event) {
-    };
+    this.onerror = function (event) { };
 
     function connect(reconnectAttempt) {
         ws = new WebSocket(url, protocols);
-        
+
         self.onconnecting();
         if (self.debug || ReconnectingWebSocket.debugAll) {
             console.debug('ReconnectingWebSocket', 'attempt-connect', url);
         }
-        
-        var localWs = ws;
-        var timeout = setTimeout(function() {
-            if (self.debug || ReconnectingWebSocket.debugAll) {
-                console.debug('ReconnectingWebSocket', 'connection-timeout', url);
-            }
-            timedOut = true;
-            localWs.close();
-            timedOut = false;
-        }, self.timeoutInterval);
-        
-        ws.onopen = function(event) {
+
+        var localWs = ws,
+            timeout = setTimeout(function () {
+                if (self.debug || ReconnectingWebSocket.debugAll) {
+                    console.debug('ReconnectingWebSocket', 'connection-timeout', url);
+                }
+                timedOut = true;
+                localWs.close();
+                timedOut = false;
+            }, self.timeoutInterval);
+
+        ws.onopen = function (event) {
             clearTimeout(timeout);
             if (self.debug || ReconnectingWebSocket.debugAll) {
                 console.debug('ReconnectingWebSocket', 'onopen', url);
@@ -107,8 +106,8 @@ function ReconnectingWebSocket(url, protocols) {
             reconnectAttempt = false;
             self.onopen(event);
         };
-        
-        ws.onclose = function(event) {
+
+        ws.onclose = function (event) {
             clearTimeout(timeout);
             ws = null;
             if (forcedClose) {
@@ -123,18 +122,18 @@ function ReconnectingWebSocket(url, protocols) {
                     }
                     self.onclose(event);
                 }
-                setTimeout(function() {
+                setTimeout(function () {
                     connect(true);
                 }, self.reconnectInterval);
             }
         };
-        ws.onmessage = function(event) {
+        ws.onmessage = function (event) {
             if (self.debug || ReconnectingWebSocket.debugAll) {
                 console.debug('ReconnectingWebSocket', 'onmessage', url, event.data);
             }
-        	self.onmessage(event);
+            self.onmessage(event);
         };
-        ws.onerror = function(event) {
+        ws.onerror = function (event) {
             if (self.debug || ReconnectingWebSocket.debugAll) {
                 console.debug('ReconnectingWebSocket', 'onerror', url, event);
             }
@@ -143,18 +142,17 @@ function ReconnectingWebSocket(url, protocols) {
     }
     connect(url);
 
-    this.send = function(data) {
+    this.send = function (data) {
         if (ws) {
             if (self.debug || ReconnectingWebSocket.debugAll) {
                 console.debug('ReconnectingWebSocket', 'send', url, data);
             }
             return ws.send(data);
-        } else {
-            throw 'INVALID_STATE_ERR : Pausing to reconnect websocket';
         }
+        throw 'INVALID_STATE_ERR : Pausing to reconnect websocket';
     };
 
-    this.close = function() {
+    this.close = function () {
         forcedClose = true;
         if (ws) {
             ws.close();
@@ -165,7 +163,7 @@ function ReconnectingWebSocket(url, protocols) {
      * Additional public API method to refresh the connection if still open (close, re-open).
      * For example, if the app suspects bad data / missed heart beats, it can try to refresh.
      */
-    this.refresh = function() {
+    this.refresh = function () {
         if (ws) {
             ws.close();
         }
