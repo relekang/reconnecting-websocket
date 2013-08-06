@@ -48,6 +48,8 @@
  * - Joe Walnes
  */
 function ReconnectingWebSocket(url, protocols) {
+    'use strict';
+
     protocols = protocols || [];
 
     // These can be altered by calling code.
